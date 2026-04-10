@@ -232,16 +232,16 @@ def blosum_distance_matrix(sequences, substitution_matrix = "BLOSUM62"):
 def distance_in_hi (sequences, potts_model_path, potts_file_format = "npz"):
     hi_rbm = dca_functions.load_potts(potts_model_path, potts_file_format)["h"]
 
-    hi_RBM_by_seq_matrix = np.zeros(sequences.shape)
-    for i in range(sequences.shape[0]): #cada seq
-        for j in range(sequences.shape[1]): #cada pos del ali
-            hi_RBM_by_seq_matrix[i,j] = hi_rbm[j, int(sequences[i,j])] #la posicion j de la secuencia, el aminoacido que esta en la seq i y la pos j
+    # Vectorized construction of hi_RBM_by_seq_matrix
+    # sequences shape (N, L), hi_rbm shape (L, 21)
+    L = sequences.shape[1]
+    hi_RBM_by_seq_matrix = hi_rbm[np.arange(L), sequences.T].T.astype(np.float32)
 
-    distance_in_hi = np.zeros((len(sequences), len(sequences)))
-    for i in range(len(sequences) - 1):
-        for j in range(i+1, len(sequences)):
-            distance_in_hi[i,j] = np.sqrt(np.mean((hi_RBM_by_seq_matrix[i] - hi_RBM_by_seq_matrix[j])**2))
+    # Vectorized distance computation using pdist
+    # np.sqrt(np.mean((A-B)**2)) == (1/sqrt(L)) * EuclideanDistance(A, B)
+    d_condensed = pdist(hi_RBM_by_seq_matrix, metric='euclidean')
+    d_condensed /= np.sqrt(L)
 
-    distance_in_hi = distance_in_hi + distance_in_hi.T
+    distance_in_hi = squareform(d_condensed).astype(np.float32)
 
     return distance_in_hi
