@@ -5,6 +5,7 @@ from Bio.Align import substitution_matrices
 import dca_functions
 from numba import jit
 from numba import prange as parallel_range
+from scipy.spatial.distance import pdist, squareform
 
 
 '''

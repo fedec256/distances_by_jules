@@ -9,7 +9,7 @@ import alignments_functions
 import mcmc_functions as mcmc
 import plots_of_distances as plots
 
-def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w, suffix=""):
+def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_frozen, suffix=""):
     print(f" -> Generando gráficos para {suffix or 'full'}...")
     
     out_hi = os.path.join(data_path, f"hi_distance{suffix}.npy")
@@ -39,8 +39,8 @@ def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natu
     plt.figure(figsize=(10,6))
 
     # Weights might not match sampled size, so we check
-    if w is not None and len(w) == len(frozen_energies):
-        sns.kdeplot(x=frozen_energies, label=f"KDEplot Frozen ({suffix or 'full'})", weights=w)
+    if w_frozen is not None and len(w_frozen) == len(frozen_energies):
+        sns.kdeplot(x=frozen_energies, label=f"KDEplot Frozen ({suffix or 'full'})", weights=w_frozen)
     else:
         sns.kdeplot(x=frozen_energies, label=f"KDEplot Frozen ({suffix or 'full'})")
 
@@ -76,6 +76,7 @@ if __name__ == "__main__":
     # Load natural data once
     print("Cargando datos naturales...")
     seqs, names = alignments_functions.load_msa(msa_path)
+    # Correctly convert list of sequences to numpy array of individual characters
     MSA_np = alignments_functions.MSA_to_numpy(np.array([[c for c in str(s)] for s in seqs]))
 
     potts_model = np.load(potts_path)
@@ -96,13 +97,17 @@ if __name__ == "__main__":
         path_e_full = os.path.join(data_path, 'frozen_energies.npy')
         if os.path.exists(path_e_full):
             frozen_energies = np.load(path_e_full)
-            generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_natural, suffix="")
+            # Try to load corresponding weights
+            path_w_full = os.path.join(data_path, 'frozen_weights.npy')
+            w_frozen_full = np.load(path_w_full) if os.path.exists(path_w_full) else None
+            generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_frozen_full, suffix="")
 
         # Check for sampled analysis
         path_e_sampled = os.path.join(data_path, 'frozen_energies_sampled.npy')
         if os.path.exists(path_e_sampled):
             sampled_energies = np.load(path_e_sampled)
-            # For sampled, we don't have individual weights usually, so pass None or a subset if possible
-            generate_plots_for_type(data_path, sampled_energies, natural_energies, w_natural, None, suffix="_sampled")
+            path_w_sampled = os.path.join(data_path, 'frozen_weights_sampled.npy')
+            w_frozen_sampled = np.load(path_w_sampled) if os.path.exists(path_w_sampled) else None
+            generate_plots_for_type(data_path, sampled_energies, natural_energies, w_natural, w_frozen_sampled, suffix="_sampled")
 
     print("Ya miramos y graficamos en todas las carpetas!")

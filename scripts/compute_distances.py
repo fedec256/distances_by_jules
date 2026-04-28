@@ -8,7 +8,7 @@ import glob
 sys.path.append('../modules')
 import alignments_functions
 
-def run_analysis(frozen_sequences, frozen_energies, data_path, potts_path, suffix=""):
+def run_analysis(frozen_sequences, frozen_energies, frozen_weights, data_path, potts_path, suffix=""):
     # Output filenames
     out_hi = os.path.join(data_path, f"hi_distance{suffix}.npy")
     out_Z_hi = os.path.join(data_path, f"hi_Z_linkage_average{suffix}.npy")
@@ -43,10 +43,11 @@ def run_analysis(frozen_sequences, frozen_energies, data_path, potts_path, suffi
     np.save(out_Z_hamming, hamming_Z_linkage)
     np.save(out_order_hamming, hamming_orderZ)
     
-    # Save energies for sampled subset as well
-    if suffix:
-        np.save(os.path.join(data_path, f"frozen_energies{suffix}.npy"), frozen_energies)
-        np.save(os.path.join(data_path, f"frozen_alignment{suffix}.npy"), frozen_sequences)
+    # Save energies/sequences/weights for the set used (especially if sampled)
+    np.save(os.path.join(data_path, f"frozen_energies{suffix}.npy"), frozen_energies)
+    np.save(os.path.join(data_path, f"frozen_alignment{suffix}.npy"), frozen_sequences)
+    if frozen_weights is not None:
+        np.save(os.path.join(data_path, f"frozen_weights{suffix}.npy"), frozen_weights)
 
 
 if __name__ == "__main__":
@@ -93,28 +94,33 @@ if __name__ == "__main__":
         print(f"Total secuencias: {n_seqs}")
 
         # Thresholds
-        MAX_FULL = 20000
+        MAX_ANALYSIS = 20000
         N_SAMPLE = 5000
 
-        # Run Full if small enough
-        if n_seqs <= MAX_FULL:
-            run_analysis(frozen_sequences, frozen_energies, data_path, potts_path, suffix="")
+        # --- "Full" or "Maximized" Analysis ---
+        if n_seqs <= MAX_ANALYSIS:
+            print(f"-> Ejecutando análisis completo ({n_seqs} secuencias).")
+            run_analysis(frozen_sequences, frozen_energies, weights, data_path, potts_path, suffix="")
         else:
-            print(f"-> Demasiadas secuencias ({n_seqs}) para análisis completo. Solo muestreo.")
-
-        # Always run Sampling if n_seqs > N_SAMPLE
-        if n_seqs > N_SAMPLE:
-            print(f"-> Realizando muestreo de {N_SAMPLE} secuencias...")
+            print(f"-> Muestreando {MAX_ANALYSIS} de {n_seqs} para análisis principal.")
             if weights is not None and len(weights) == n_seqs:
                 prob = weights / weights.sum()
-                indices = np.random.choice(n_seqs, N_SAMPLE, p=prob, replace=False)
+                indices = np.random.choice(n_seqs, MAX_ANALYSIS, p=prob, replace=False)
+                run_analysis(frozen_sequences[indices], frozen_energies[indices], weights[indices], data_path, potts_path, suffix="")
             else:
-                print("-> Usando muestreo uniforme (sin pesos).")
-                indices = np.random.choice(n_seqs, N_SAMPLE, replace=False)
+                indices = np.random.choice(n_seqs, MAX_ANALYSIS, replace=False)
+                run_analysis(frozen_sequences[indices], frozen_energies[indices], None, data_path, potts_path, suffix="")
 
-            sampled_seqs = frozen_sequences[indices]
-            sampled_energies = frozen_energies[indices]
-            run_analysis(sampled_seqs, sampled_energies, data_path, potts_path, suffix="_sampled")
+        # --- "Lightweight" Sampling (if enough sequences) ---
+        if n_seqs > N_SAMPLE:
+            print(f"-> Realizando muestreo liviano de {N_SAMPLE} secuencias para comparación rápida...")
+            if weights is not None and len(weights) == n_seqs:
+                prob = weights / weights.sum()
+                indices_small = np.random.choice(n_seqs, N_SAMPLE, p=prob, replace=False)
+                run_analysis(frozen_sequences[indices_small], frozen_energies[indices_small], weights[indices_small], data_path, potts_path, suffix="_sampled")
+            else:
+                indices_small = np.random.choice(n_seqs, N_SAMPLE, replace=False)
+                run_analysis(frozen_sequences[indices_small], frozen_energies[indices_small], None, data_path, potts_path, suffix="_sampled")
 
         print("-> ¡Listo!\n")
 
