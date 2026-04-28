@@ -21,6 +21,17 @@ def main():
 
     for protein in families:
         domain_path = os.path.join(domains_dir, protein)
+
+        # Link domains to data folder so scripts can find them
+        data_dir = os.path.join(scripts_dir, "../data", protein)
+        os.makedirs(os.path.dirname(data_dir), exist_ok=True)
+        if not os.path.exists(data_dir):
+            try:
+                os.symlink(os.path.abspath(domain_path), data_dir)
+                print(f"Linked {domain_path} -> {data_dir}")
+            except Exception as e:
+                print(f"Could not link {domain_path}: {e}")
+
         msa_path = os.path.join(domain_path, "MSA.fasta")
         potts_path = os.path.join(domain_path, "potts.npz")
 
