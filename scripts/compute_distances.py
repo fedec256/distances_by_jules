@@ -110,12 +110,6 @@ if __name__ == "__main__":
         n_sample = int(round(neff))
         print(f"Neff: {neff:.2f} -> Tamaño de muestra: {n_sample}")
 
-        # Safety limit for distance matrix (e.g., 20,000)
-        MAX_DISTANCE_N = 20000
-        if n_sample > MAX_DISTANCE_N:
-            print(f"Warning: n_sample ({n_sample}) excede el límite de seguridad ({MAX_DISTANCE_N}). Ajustando a {MAX_DISTANCE_N}.")
-            n_sample = MAX_DISTANCE_N
-
         if n_sample < 2:
              print(f"Warning: n_sample ({n_sample}) es demasiado pequeño. Ajustando a 2.")
              n_sample = min(2, n_seqs)
