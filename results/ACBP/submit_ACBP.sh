@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=fr__{PROTEIN}
-#SBATCH --output=../results/{PROTEIN}/slurm_%x_%j.out
-#SBATCH --error=../results/{PROTEIN}/slurm_%x_%j.err
+#SBATCH --job-name=fr__ACBP
+#SBATCH --output=../results/ACBP/slurm_%x_%j.out
+#SBATCH --error=../results/ACBP/slurm_%x_%j.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
 #SBATCH --time=24:00:00
@@ -14,10 +14,10 @@ conda activate frustra_dark
 
 # 1. Run MCMC freezing
 # Defaulting to 100,000 steps to reach local minimum
-python run_mcmc_freezing.py {PROTEIN} 100000
+python run_mcmc_freezing.py ACBP 100000
 
 # 2. Compute Distances (using Neff sampling strategy)
-python compute_distances.py {PROTEIN}
+python compute_distances.py ACBP
 
 # 3. Generate Plots (Hamming Heatmaps and Energy KDEs)
-python distances_graphs_generator.py {PROTEIN}
+python distances_graphs_generator.py ACBP
