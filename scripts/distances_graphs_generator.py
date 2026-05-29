@@ -12,24 +12,17 @@ import plots_of_distances as plots
 def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_frozen, suffix=""):
     print(f" -> Generando gráficos para {suffix or 'full'}...")
     
-    out_hi = os.path.join(data_path, f"hi_distance{suffix}.npy")
-    out_order_hi = os.path.join(data_path, f"hi_orderZ{suffix}.npy")
     out_hamming = os.path.join(data_path, f"hamming_distance{suffix}.npy")
     out_order_hamming = os.path.join(data_path, f"hamming_orderZ{suffix}.npy")
 
     try:
-        hi_distance = np.load(out_hi)
-        hi_orderZ = np.load(out_order_hi)
         hamming_distance = np.load(out_hamming)
         hamming_orderZ = np.load(out_order_hamming)
     except FileNotFoundError:
-        print(f"  -> Archivos de distancia para {suffix} no encontrados. Salteando.")
+        print(f"  -> Archivos de distancia Hamming para {suffix} no encontrados. Salteando.")
         return
 
-    # Heatmaps
-    hi_heatmap_path = os.path.join(data_path, f"hi_distances_heatmap{suffix}")
-    plots.distance_and_energy_of_sequences_graph(hi_distance, hi_orderZ, frozen_energies, hi_heatmap_path)
-
+    # Hamming Heatmap
     hamming_heatmap_path = os.path.join(data_path, f"hamming_distances_heatmap{suffix}")
     plots.distance_and_energy_of_sequences_graph(hamming_distance, hamming_orderZ, frozen_energies, hamming_heatmap_path)
 
@@ -44,7 +37,10 @@ def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natu
     else:
         sns.kdeplot(x=frozen_energies, label=f"KDEplot Frozen ({suffix or 'full'})")
 
-    sns.kdeplot(x=natural_energies, label="KDEplot Natural", weights=w_natural)
+    if w_natural is not None and len(w_natural) == len(natural_energies):
+        sns.kdeplot(x=natural_energies, label="KDEplot Natural", weights=w_natural)
+    else:
+        sns.kdeplot(x=natural_energies, label="KDEplot Natural")
 
     plt.legend()
     plt.xlabel("Energy")
@@ -52,6 +48,13 @@ def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natu
     plt.savefig(f"{kde_plot_path}.pdf", dpi=300, bbox_inches='tight')
     plt.close()
 
+def find_msa_file(protein_data_dir):
+    """Finds the MSA file in the protein data directory."""
+    for pattern in ["MSA.fasta", "MSA_nogap.fasta", "*.fasta"]:
+        matches = glob.glob(os.path.join(protein_data_dir, pattern))
+        if matches:
+            return matches[0]
+    return None
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -61,10 +64,38 @@ if __name__ == "__main__":
     protein = sys.argv[1]
 
     data_dir = f"../data/{protein}"
-    msa_path = os.path.join(data_dir, "MSA.fasta")
     potts_path = os.path.join(data_dir, "potts.npz")
     w_path = os.path.join(data_dir, "weights.npy")
     simulations_path = f"../results/{protein}/simulations_of_frozen_alignments/"
+
+    msa_path = find_msa_file(data_dir)
+    if not msa_path:
+        print(f"Error: No se encontró un archivo MSA en {data_dir}")
+        sys.exit(1)
+
+    # Load natural data once
+    print(f"Cargando datos naturales desde {msa_path}...")
+    seqs, names = alignments_functions.load_msa(msa_path)
+
+    # Efficient conversion
+    n_seqs = len(seqs)
+    n_pos = len(seqs[0])
+    MSA_np = np.zeros((n_seqs, n_pos), dtype=np.int64)
+    aa_dict = alignments_functions.AA_dict_full
+    for i, seq in enumerate(seqs):
+        for j, char in enumerate(seq):
+            MSA_np[i, j] = aa_dict.get(char, 0)
+
+    potts_model = np.load(potts_path)
+    h = potts_model["h"]
+    J = potts_model["J"]
+
+    w_natural = np.load(w_path) if os.path.exists(w_path) else None
+
+    print("Calculando energías naturales...")
+    natural_energies = np.zeros(n_seqs)
+    for i in range(n_seqs):
+        natural_energies[i] = mcmc.E_tot(MSA_np[i], h, J)
 
     search_pattern = os.path.join(simulations_path, "frozen_alignment_*")
     simulation_folders = glob.glob(search_pattern)
@@ -73,41 +104,24 @@ if __name__ == "__main__":
         print(f"No se encontraron simulaciones en {simulations_path}")
         sys.exit(0)
 
-    # Load natural data once
-    print("Cargando datos naturales...")
-    seqs, names = alignments_functions.load_msa(msa_path)
-    # Correctly convert list of sequences to numpy array of individual characters
-    MSA_np = alignments_functions.MSA_to_numpy(np.array([[c for c in str(s)] for s in seqs]))
-
-    potts_model = np.load(potts_path)
-    h = potts_model["h"]
-    J = potts_model["J"]
-
-    w_natural = np.load(w_path) if os.path.exists(w_path) else None
-
-    natural_energies = []
-    for i in range(len(seqs)):
-        natural_energies.append(mcmc.E_tot(MSA_np[i], h, J))
-    natural_energies = np.array(natural_energies)
-
     for data_path in simulation_folders:
-        print(f"Procesando: {data_path}")
+        print(f"Procesando carpeta de resultados: {data_path}")
 
-        # Check for full analysis
-        path_e_full = os.path.join(data_path, 'frozen_energies.npy')
-        if os.path.exists(path_e_full):
-            frozen_energies = np.load(path_e_full)
-            # Try to load corresponding weights
-            path_w_full = os.path.join(data_path, 'frozen_weights.npy')
-            w_frozen_full = np.load(path_w_full) if os.path.exists(path_w_full) else None
-            generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_frozen_full, suffix="")
+        # Check for sampled Neff analysis (the new priority)
+        path_e_neff = os.path.join(data_path, 'frozen_energies_sampled_neff.npy')
+        if os.path.exists(path_e_neff):
+            frozen_energies = np.load(path_e_neff)
+            path_w_neff = os.path.join(data_path, 'frozen_weights_sampled_neff.npy')
+            w_frozen_neff = np.load(path_w_neff) if os.path.exists(path_w_neff) else None
+            generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_frozen_neff, suffix="_sampled_neff")
 
-        # Check for sampled analysis
-        path_e_sampled = os.path.join(data_path, 'frozen_energies_sampled.npy')
-        if os.path.exists(path_e_sampled):
-            sampled_energies = np.load(path_e_sampled)
-            path_w_sampled = os.path.join(data_path, 'frozen_weights_sampled.npy')
-            w_frozen_sampled = np.load(path_w_sampled) if os.path.exists(path_w_sampled) else None
-            generate_plots_for_type(data_path, sampled_energies, natural_energies, w_natural, w_frozen_sampled, suffix="_sampled")
+        # Check for legacy suffix-less or "_sampled" files if they exist
+        for legacy_suffix in ["", "_sampled"]:
+            path_e = os.path.join(data_path, f'frozen_energies{legacy_suffix}.npy')
+            if os.path.exists(path_e) and legacy_suffix != "_sampled_neff":
+                frozen_energies = np.load(path_e)
+                path_w = os.path.join(data_path, f'frozen_weights{legacy_suffix}.npy')
+                w_frozen = np.load(path_w) if os.path.exists(path_w) else None
+                generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natural, w_frozen, suffix=legacy_suffix)
 
-    print("Ya miramos y graficamos en todas las carpetas!")
+    print("¡Gráficos generados!")
