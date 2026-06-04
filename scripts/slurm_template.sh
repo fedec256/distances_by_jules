@@ -19,5 +19,8 @@ python run_mcmc_freezing.py {PROTEIN} 100000
 # 2. Compute Distances (using Neff sampling strategy)
 python compute_distances.py {PROTEIN}
 
-# 3. Generate Plots (Hamming Heatmaps and Energy KDEs)
+# 3. Analyze Basins (Unique sequences and counts)
+python analyze_basins.py {PROTEIN}
+
+# 4. Generate Plots (Hamming Heatmaps, Energy KDEs, and Basin Rank plots)
 python distances_graphs_generator.py {PROTEIN}
