@@ -64,6 +64,38 @@ def distance_and_energy_of_sequences_graph(distance_matrix, orderZ, energies, sa
     # Close fig to free memory
     plt.close(fig)
 
+def plot_basin_size_vs_rank(counts, saving_path=None):
+    """
+    Plots Basin Size vs Rank.
+    """
+    ranks = np.arange(1, len(counts) + 1)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Linear plot
+    ax1.plot(ranks, counts, marker='o', linestyle='-', markersize=4, color='teal')
+    ax1.set_title("Basin Size vs Rank (Linear)")
+    ax1.set_xlabel("Rank")
+    ax1.set_ylabel("Basin Size (Number of Sequences)")
+    ax1.grid(True, which="both", ls="-", alpha=0.5)
+
+    # Log-log plot
+    ax2.loglog(ranks, counts, marker='o', linestyle='-', markersize=4, color='maroon')
+    ax2.set_title("Basin Size vs Rank (Log-Log)")
+    ax2.set_xlabel("Rank (log)")
+    ax2.set_ylabel("Basin Size (log)")
+    ax2.grid(True, which="both", ls="-", alpha=0.5)
+
+    plt.tight_layout()
+
+    if saving_path:
+        plt.savefig(f"{saving_path}.png", dpi=300, bbox_inches='tight')
+        plt.savefig(f"{saving_path}.pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+
+    plt.close(fig)
+
 def distance_and_energy_of_sequences_graph_with_seaborn(distance_matrix, orderZ, energies, saving_path = None):
     """Legacy version using seaborn. Less efficient for very large matrices."""
     D_clusteredZ = distance_matrix[orderZ][:, orderZ]
