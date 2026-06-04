@@ -26,6 +26,15 @@ def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natu
     hamming_heatmap_path = os.path.join(data_path, f"hamming_distances_heatmap{suffix}")
     plots.distance_and_energy_of_sequences_graph(hamming_distance, hamming_orderZ, frozen_energies, hamming_heatmap_path)
 
+    # Basin Analysis Plot (only for full, suffix-less analysis usually, but we check)
+    basin_file = os.path.join(data_path, "basin_analysis.npz")
+    if os.path.exists(basin_file):
+        print(f"  -> Graficando Basin Size vs Rank {suffix}...")
+        basin_data = np.load(basin_file)
+        counts = basin_data["counts"]
+        basin_plot_path = os.path.join(data_path, f"basin_size_vs_rank{suffix}")
+        plots.plot_basin_size_vs_rank(counts, basin_plot_path)
+
     # KDE
     print(f"  -> Graficando distribuciones KDE {suffix}...")
     kde_plot_path = os.path.join(data_path, f"energies_KDE_distribution{suffix}")
