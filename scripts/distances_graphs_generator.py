@@ -29,11 +29,40 @@ def generate_plots_for_type(data_path, frozen_energies, natural_energies, w_natu
     # Basin Analysis Plot (only for full, suffix-less analysis usually, but we check)
     basin_file = os.path.join(data_path, "basin_analysis.npz")
     if os.path.exists(basin_file):
-        print(f"  -> Graficando Basin Size vs Rank {suffix}...")
+        print(f"  -> Graficando Basin Analysis {suffix}...")
         basin_data = np.load(basin_file)
+
+        # 1. Basin Size vs Rank
         counts = basin_data["counts"]
         basin_plot_path = os.path.join(data_path, f"basin_size_vs_rank{suffix}")
         plots.plot_basin_size_vs_rank(counts, basin_plot_path)
+
+        # 2. Energy vs Rank
+        if "basin_energies" in basin_data:
+            basin_energies = basin_data["basin_energies"]
+            energy_rank_plot_path = os.path.join(data_path, f"basin_energy_vs_rank{suffix}")
+            plots.plot_energy_vs_rank(basin_energies, energy_rank_plot_path)
+
+        # 3. 3-panel Distance Matrix (Basin Size + Heatmap + Energy)
+        # We need to map every sequence in 'frozen_energies' to its basin size.
+        # Note: frozen_alignment.npy contains the integer sequences.
+        # We can re-run the unique identification or use the saved data if we had the mapping.
+        # For simplicity and robust mapping, we'll quickly map them here.
+        frozen_alignment_path = os.path.join(data_path, f"frozen_alignment{suffix}.npy")
+        if os.path.exists(frozen_alignment_path):
+            print(f"  -> Generando gráfico de 3 paneles (Basin+Heatmap+Energy) {suffix}...")
+            f_ali = np.load(frozen_alignment_path)
+            u_seqs = basin_data["unique_sequences"]
+            u_counts = basin_data["counts"]
+
+            # Map each sequence to its count
+            # np.unique with axis=0 is slow, but we only do it once per simulation.
+            # A faster way: use a dictionary of tuples
+            seq_to_count = {tuple(seq): count for seq, count in zip(u_seqs, u_counts)}
+            f_basin_sizes = np.array([seq_to_count[tuple(s)] for s in f_ali])
+
+            three_panel_path = os.path.join(data_path, f"hamming_basin_energy_3panel{suffix}")
+            plots.distance_basin_and_energy_graph(hamming_distance, hamming_orderZ, frozen_energies, f_basin_sizes, three_panel_path)
 
     # KDE
     print(f"  -> Graficando distribuciones KDE {suffix}...")

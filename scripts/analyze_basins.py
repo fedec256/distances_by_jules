@@ -3,7 +3,11 @@ import os
 import sys
 import glob
 
-def analyze_basins(frozen_alignment_path):
+sys.path.append('../modules')
+import mcmc_functions as mcmc
+import alignments_functions
+
+def analyze_basins(frozen_alignment_path, h=None, J=None):
     print(f"Cargando alineamiento desde {frozen_alignment_path}...")
     # Load alignment
     alignment = np.load(frozen_alignment_path)
@@ -22,7 +26,15 @@ def analyze_basins(frozen_alignment_path):
     n_basins = len(sorted_counts)
     print(f"Encontradas {n_basins} cuencas únicas.")
 
-    return sorted_counts, sorted_unique_seqs
+    # Calculate energies if Potts model is provided
+    energies = None
+    if h is not None and J is not None:
+        print(f"Calculando energías para {n_basins} cuencas...")
+        energies = np.zeros(n_basins)
+        for i in range(n_basins):
+            energies[i] = mcmc.E_tot(sorted_unique_seqs[i], h, J)
+
+    return sorted_counts, sorted_unique_seqs, energies
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -30,7 +42,19 @@ if __name__ == "__main__":
         sys.exit(1)
 
     protein = sys.argv[1]
+    data_dir = f"../data/{protein}"
+    potts_path = os.path.join(data_dir, "potts.npz")
     results_base = f"../results/{protein}/simulations_of_frozen_alignments/"
+
+    # Load Potts model for energy calculation
+    h, J = None, None
+    if os.path.exists(potts_path):
+        print(f"Cargando modelo de Potts desde {potts_path}")
+        potts_model = np.load(potts_path)
+        h = potts_model["h"]
+        J = potts_model["J"]
+    else:
+        print(f"Warning: No se encontró {potts_path}. Las energías no se calcularán.")
 
     # Find all simulation folders
     sim_dirs = glob.glob(os.path.join(results_base, "frozen_alignment_*"))
@@ -45,9 +69,12 @@ if __name__ == "__main__":
             continue
 
         print(f"Procesando cuencas en: {sim_dir}")
-        counts, unique_seqs = analyze_basins(frozen_ali_path)
+        counts, unique_seqs, energies = analyze_basins(frozen_ali_path, h, J)
 
         # Save results
         out_path = os.path.join(sim_dir, "basin_analysis.npz")
-        np.savez(out_path, counts=counts, unique_sequences=unique_seqs)
+        if energies is not None:
+            np.savez(out_path, counts=counts, unique_sequences=unique_seqs, basin_energies=energies)
+        else:
+            np.savez(out_path, counts=counts, unique_sequences=unique_seqs)
         print(f"Resultados guardados en {out_path}")
