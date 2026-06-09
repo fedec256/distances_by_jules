@@ -3,10 +3,10 @@
 #SBATCH --output=../results/{PROTEIN}/slurm_basin_%j.out
 #SBATCH --error=../results/{PROTEIN}/slurm_basin_%j.err
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --time=04:00:00
-#SBATCH --mem=64G
-#SBATCH --partition=rome
+#SBATCH --cpus-per-task=64
+#SBATCH --time=24:00:00
+#SBATCH --mem=200G
+#SBATCH --partition=multi
 
 # Load environment
 source ~/miniconda3/etc/profile.d/conda.sh

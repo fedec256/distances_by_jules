@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=64
 #SBATCH --time=24:00:00
 #SBATCH --mem=200G
-#SBATCH --partition=rome
+#SBATCH --partition=multi
 
 # Load environment
 source ~/miniconda3/etc/profile.d/conda.sh
