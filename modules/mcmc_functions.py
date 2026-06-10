@@ -325,44 +325,62 @@ def freezing_alignment(path, MSA, nsteps, Hi, Jij, temp = 1e-16, transient = 0,
 
 
 
-#this one i think is broken we should DESTROY!!! no, fix
-def generate_seq_ensemble(path, num_cores,Hi,Jij,NSeq,temp=1.0,transient=40000,save_each=5000):
-    
+def generate_seq_ensemble(path, num_cores, Hi, Jij, NSeq, temp=1.0, transient=40000, save_each=5000, folder_suffix=""):
     """
-    Descripción
+    Generates a sequence ensemble at a given temperature using parallel MCMC.
 
-    Parámetros
+    Parameters
     -----------
-
-    Returns
-    -----------
-
+    path : str
+        Base directory for saving results.
+    num_cores : int
+        Number of parallel chains to run.
+    Hi : np.ndarray
+        Local fields.
+    Jij : np.ndarray
+        Couplings.
+    NSeq : int
+        Total number of sequences to generate across all cores.
+    temp : float
+        Simulation temperature.
+    transient : int
+        Burn-in steps.
+    save_each : int
+        Steps between saved samples.
+    folder_suffix : str
+        Suffix to add to the simulation folder name.
     """
     
-    npos,Naa=Hi.shape
+    npos, Naa = Hi.shape
     
-    nseq=int(NSeq/num_cores)
-    nsteps=transient+save_each*nseq #ese save_each es la cantidad de pasos para que dejen de estar correlacionadas 2 secuencias (funcion q lo calcula existe) además cada esa cantidad de secuencias voy a guardar una secuencia de la simulación
-    args=nsteps,npos,Naa,temp,Hi,Jij,save_each,transient
-    r=Parallel(n_jobs=num_cores,verbose=10)(delayed(MCseq)(*j) for (i,j) in [(i_,args) for i_ in np.arange(num_cores)])
-    energies_, seqs_= zip(*r)
-    energies=np.concatenate(energies_)
-    ali=np.concatenate(seqs_)
-#    np.save(path+name_energies,energies)
-#    np.save(path+name_seqs,ali)
+    # Divide work across cores
+    nseq_per_core = int(NSeq // num_cores)
+    nsteps = transient + save_each * nseq_per_core
 
-    #Create a unique name por each simulation
+    args = (nsteps, npos, Naa, temp, Hi, Jij, save_each, transient)
+
+    print(f"Running {num_cores} parallel MCMC chains for T={temp}...")
+    r = Parallel(n_jobs=num_cores, verbose=10)(delayed(MCseq)(*args) for _ in range(num_cores))
+
+    energies_list, seqs_list = zip(*r)
+    energies = np.concatenate(energies_list)
+    ali = np.concatenate(seqs_list)
+
+    # Naming and Saving
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    sequences_file_name = f'ensemble_of_sequences_{timestamp}.npy'
-    energies_file_name = f'ensemble_of_energies_{timestamp}.npy'
-    params_file_name    = f"params_of_ensemble_{timestamp}.npz"
-    saving_dir = os.path.join(path, f"simulation_of_ensemble_{timestamp}")
+    if folder_suffix:
+        folder_name = f"simulation_of_ensemble_{folder_suffix}_{timestamp}"
+    else:
+        folder_name = f"simulation_of_ensemble_{timestamp}"
+
+    saving_dir = os.path.join(path, folder_name)
     os.makedirs(saving_dir, exist_ok=True)
-    np.save(os.path.join(saving_dir,sequences_file_name), ali)
-    np.save(os.path.join(saving_dir,energies_file_name), energies)
+
+    np.save(os.path.join(saving_dir, 'ensemble_of_sequences.npy'), ali)
+    np.save(os.path.join(saving_dir, 'ensemble_of_energies.npy'), energies)
 
     np.savez(
-        os.path.join(saving_dir, params_file_name),
+        os.path.join(saving_dir, "params.npz"),
         temp=temp,
         Nseq=NSeq,
         nsteps=nsteps,
@@ -370,8 +388,10 @@ def generate_seq_ensemble(path, num_cores,Hi,Jij,NSeq,temp=1.0,transient=40000,s
         transient=transient,
         npos=npos,
         Naa=Naa,
-        timestamp=timestamp
+        timestamp=timestamp,
+        num_cores=num_cores
     )
+    print(f"Results saved in {saving_dir}")
 
 
 #Estas dos de acá abajo sirven para ver el tiempo de montecarlo necesario para que dos secuencias dejen de estar autocorrelacionadas, será el tiempo que tendrás que 
