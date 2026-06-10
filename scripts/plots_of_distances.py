@@ -179,6 +179,70 @@ def distance_basin_and_energy_graph(distance_matrix, orderZ, energies, basin_siz
 
     plt.close(fig)
 
+def plot_thermal_properties(temps, mean_energies, cv_values, saving_path=None):
+    """
+    Plots Mean Energy and Specific Heat (Cv) vs Temperature.
+    """
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10), sharex=True)
+
+    # --- Mean Energy vs T ---
+    ax1.plot(temps, mean_energies, marker='o', color='navy', linestyle='-', linewidth=2)
+    ax1.set_ylabel("Mean DCA Energy", fontsize=12)
+    ax1.set_title("Thermal Properties", fontsize=14)
+    ax1.grid(True, alpha=0.3)
+
+    # --- Cv vs T ---
+    ax2.plot(temps, cv_values, marker='s', color='crimson', linestyle='-', linewidth=2)
+    ax2.set_ylabel("Specific Heat (Cv)", fontsize=12)
+    ax2.set_xlabel("Temperature (T)", fontsize=12)
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    if saving_path:
+        plt.savefig(f"{saving_path}.png", dpi=300, bbox_inches='tight')
+        plt.savefig(f"{saving_path}.pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+    plt.close(fig)
+
+def plot_thermal_energy_distributions(temp_energy_dict, saving_path=None):
+    """
+    Combined KDE plot of energy distributions for multiple temperatures.
+    """
+    plt.figure(figsize=(10, 6))
+
+    sorted_temps = sorted(temp_energy_dict.keys())
+    # Create a colormap
+    norm = plt.Normalize(min(sorted_temps), max(sorted_temps))
+    cmap = plt.get_cmap("viridis")
+
+    for T in sorted_temps:
+        energies = temp_energy_dict[T]
+        sns.kdeplot(energies, color=cmap(norm(T)), label=f"T={T:.2f}", fill=False, alpha=0.7)
+
+    plt.title("Energy Distributions across Temperatures", fontsize=14)
+    plt.xlabel("DCA Energy", fontsize=12)
+    plt.ylabel("Density", fontsize=12)
+
+    # Legend can be huge, so we put a colorbar instead if many temps
+    if len(sorted_temps) > 10:
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm)
+        cbar.set_label("Temperature")
+    else:
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    plt.tight_layout()
+
+    if saving_path:
+        plt.savefig(f"{saving_path}.png", dpi=300, bbox_inches='tight')
+        plt.savefig(f"{saving_path}.pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+    plt.close()
+
 def distance_and_energy_of_sequences_graph_with_seaborn(distance_matrix, orderZ, energies, saving_path = None):
     """Legacy version using seaborn. Less efficient for very large matrices."""
     D_clusteredZ = distance_matrix[orderZ][:, orderZ]

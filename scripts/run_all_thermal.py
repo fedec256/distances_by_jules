@@ -26,6 +26,11 @@ def main():
     print(f"Encontradas {len(active_families)} familias listas para simulaciones térmicas.")
 
     for protein in active_families:
+        # Check if already has some results
+        thermal_res_path = os.path.join(results_dir_base, protein, "thermal_ensembles")
+        if os.path.exists(thermal_res_path) and glob.glob(os.path.join(thermal_res_path, "simulation_of_ensemble_T_*")):
+             print(f"La familia {protein} ya tiene simulaciones. El job se encargará de completar lo faltante y analizar.")
+
         print(f"Preparando job térmico para {protein}...")
 
         protein_results_dir = os.path.join(results_dir_base, protein)
