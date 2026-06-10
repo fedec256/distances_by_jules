@@ -14,3 +14,6 @@ conda activate frustra_dark
 
 # Run Thermal Ensembles (Multiple temperatures with high resolution transition)
 python run_thermal_ensembles.py {PROTEIN}
+
+# Analyze and Plot Thermal Properties (Energy, Cv, Distributions)
+python analyze_thermal_ensembles.py {PROTEIN}
