@@ -23,12 +23,15 @@ def distance_and_energy_of_sequences_graph(distance_matrix, orderZ, energies, sa
     ax1 = fig.add_subplot(gs[0])
 
     # Use imshow with rasterization for performance with many sequences
+    # Set vmin=0 and vmax=1 to fix color scale for Hamming distances
     im = ax1.imshow(
         D_clusteredZ,
         cmap='viridis',
         aspect='auto',
         rasterized=True,
-        interpolation='nearest'
+        interpolation='nearest',
+        vmin=0.0,
+        vmax=1.0
     )
 
     ax1.set_title("Hamming Distances (Ordered by Clustering)", fontsize=12, pad=8)
@@ -147,12 +150,15 @@ def distance_basin_and_energy_graph(distance_matrix, orderZ, energies, basin_siz
 
     # --- Middle: Heatmap ---
     ax1 = fig.add_subplot(gs[1], sharex=ax0)
+    # Set vmin=0 and vmax=1 to fix color scale for Hamming distances
     im = ax1.imshow(
         D_clusteredZ,
         cmap='viridis',
         aspect='auto',
         rasterized=True,
-        interpolation='nearest'
+        interpolation='nearest',
+        vmin=0.0,
+        vmax=1.0
     )
     ax1.set_ylabel("Sequences (Clustered)", fontsize=11)
     ax1.set_yticks(xticks)
