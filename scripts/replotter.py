@@ -97,8 +97,12 @@ class Replotter:
 
         try:
             frozen_energies = np.load(os.path.join(data_path, f"frozen_energies{suffix}.npy"))
-            w_frozen_path = os.path.join(data_path, f"frozen_weights{suffix}.npy")
-            w_frozen = np.load(w_frozen_path) if os.path.exists(w_frozen_path) else None
+            w_frozen = None
+            for w_name in [f"frozen_weights{suffix}.npy", "recalculated_weights.npy", "original_weights.npy", "frozen_weights.npy"]:
+                w_path = os.path.join(data_path, w_name)
+                if os.path.exists(w_path):
+                    w_frozen = np.load(w_path)
+                    break
 
             kde_plot_path = os.path.join(out_dir, f"energies_KDE_distribution{suffix}")
             plt.figure(figsize=(10,6))
